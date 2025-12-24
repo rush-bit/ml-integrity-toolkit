@@ -1,16 +1,29 @@
-# ML Integrity & Audit Toolkit
+# 🛡️ ML Integrity & Audit Toolkit
 
-## 🚀 Overview
-Most ML models fail in production because of hidden **data leakage** and **brittleness**. This toolkit provides an automated pipeline to audit models for target leakage, temporal bias, and feature sensitivity using SHAP and statistical heuristics.
+> **Automated forensic auditing for tabular machine learning models.**
+> *Detects Target Leakage, Feature Dominance, and Overfitting before deployment.*
 
-## ✨ Key Features (Planned)
-- **Target Leakage Detection:** Identification of "too-good-to-be-true" features using SHAP attribution.
-- **Robustness Stress-Testing:** Noise injection and perturbation analysis.
-- **Automated Audit Reports:** PDF/HTML summaries of model health.
-- **Streamlit Dashboard:** Interactive UI for data scientists to upload and audit models.
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.25%2B-red)
+![Status](https://img.shields.io/badge/Status-MVP-success)
 
-## 🛠️ Tech Stack
-- **Language:** Python 3.10+
-- **Analysis:** Scikit-learn, Scipy, SHAP
-- **Interface:** Streamlit
-- **DevOps:** Docker, GitHub Actions
+## 🚨 The Problem
+In real-world ML deployment, **Data Leakage** is the silent killer. Models often perform perfectly during training because they inadvertently "cheat" by accessing information that won't be available in production (e.g., future timestamps, proxy IDs). 
+
+Standard validation metrics (Accuracy/AUC) fail to catch this because the leak exists in both Train and Test sets.
+
+## 🛠️ The Solution
+This toolkit provides a **forensic dashboard** that stresses the model using Game Theoretic explanations (SHAP) to identify features that are "too good to be true."
+
+### Key Capabilities
+* **Automated Leakage Injection:** Simulates real-world data corruption (Target Leakage & ID Proxy Leakage) to test audit capabilities.
+* **SHAP-Based Forensics:** Uses Shapley values to detect non-linear feature dominance.
+* **Heuristic Audit Engine:** Automatically flags models with >98% accuracy driven by a small subset of features (<25% of feature space).
+* **Interactive Dashboard:** A Streamlit UI for non-technical stakeholders to visualize model trustworthiness.
+
+## 🚀 Quick Start
+
+### 1. Clone the Repository
+```bash
+git clone [https://github.com/rush-bit/ml-integrity-toolkit.git](https://github.com/rush-bit/ml-integrity-toolkit.git)
+cd ml-integrity-toolkit

@@ -1,85 +1,97 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from leakage_injector import LeakageInjector
 from audit_logic import ModelAuditor
 
-# Page Config
 st.set_page_config(page_title="ML Integrity Auditor", layout="wide")
 
-st.title("🛡️ ML Integrity & Leakage Auditor")
+st.title("🛡️ ML Integrity & Leakage Auditor (Production Mode)")
 st.markdown("""
-**Objective:** Detect hidden data leakage in tabular models before deployment.
-This tool simulates leakage injection and then uses **SHAP (Game Theory)** to audit the model.
+**Upload your dataset.** This tool will train a forensic model on your data to detect if any feature is "too good to be true" (Data Leakage).
 """)
 
-# Sidebar for controls
-st.sidebar.header("1. Data Simulation")
-# CHANGED: Default noise to 0.01 to make the leak VERY obvious for testing
-noise_level = st.sidebar.slider("Injection Noise Level (Lower = Harder to detect)", 0.0, 0.5, 0.01)
+# --- SIDEBAR: INPUT ---
+st.sidebar.header("1. Upload Data")
+uploaded_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 
-if st.sidebar.button("Generate & Corrupt Data"):
-    with st.spinner("Injecting Leakage..."):
-        injector = LeakageInjector()
-        df = injector.load_data()
-        # Inject leakage based on slider
-        df = injector.inject_target_leakage(df, noise_level=noise_level)
-        df.to_csv("data/leaky_data.csv", index=False)
-    st.sidebar.success(f"✅ Data Generated with Noise Level: {noise_level}")
+target_col = None
+df = None
 
-# Main Area
-st.header("2. Model Audit Results")
-
-if st.button("Run Audit System"):
+if uploaded_file is not None:
     try:
-        auditor = ModelAuditor("data/leaky_data.csv")
+        df = pd.read_csv(uploaded_file)
+        st.sidebar.success(f"✅ Loaded: {len(df)} rows, {len(df.columns)} cols")
         
-        # 1. Train Model
-        with st.status("Training Forensic Model...", expanded=True) as status:
-            model = auditor.train_baseline_model()
-            acc = model.score(auditor.X_test, pd.read_csv("data/leaky_data.csv")['target'].iloc[auditor.X_test.index])
-            status.update(label=f"Model Trained! Accuracy: {acc:.4f}", state="complete")
+        # Select Target Column
+        st.sidebar.header("2. Configuration")
+        all_cols = df.columns.tolist()
+        target_col = st.sidebar.selectbox("Select Target Column (What you predict):", all_cols)
         
-        # 2. Calculate SHAP
-        with st.spinner("Calculating SHAP Values..."):
-            auditor.analyze_with_shap()
-        
-        # 3. Process Results
-        st.subheader("Feature Importance (SHAP)")
-        
-        # Force 1D array for SHAP values
-        mean_shap = np.abs(auditor.shap_values).mean(axis=0)
-        mean_shap = np.array(mean_shap).flatten()
-        
-        feature_importance = pd.DataFrame({
-            'feature': auditor.X_test.columns,
-            'importance': mean_shap
-        }).sort_values(by='importance', ascending=False)
-        
-        # Normalize to percentage
-        total_importance = feature_importance['importance'].sum()
-        feature_importance['importance_percent'] = (feature_importance['importance'] / total_importance) * 100
-        
-        # Show the top 5 raw numbers so you can debug
-        st.write("Top 5 Drivers of Prediction:")
-        st.dataframe(feature_importance.head(5).style.format({'importance_percent': '{:.2f}%'}))
-        
-        # Plot
-        st.bar_chart(feature_importance.set_index('feature')['importance'])
-        
-        # 4. The Verdict (New Logic)
-        top_1_score = feature_importance.iloc[0]['importance_percent']
-        top_2_score = feature_importance.iloc[0]['importance_percent'] + feature_importance.iloc[1]['importance_percent']
-        
-        # Logic: If Top 1 is > 15% OR Top 2 combined are > 25% AND Accuracy is super high
-        if acc > 0.98 and (top_1_score > 15 or top_2_score > 25):
-            st.error(f"🚨 LEAKAGE DETECTED! The top features explain {top_2_score:.1f}% of the model. Accuracy is {acc:.4f}. This is suspicious.")
-        elif top_1_score > 40:
-             st.warning(f"⚠️ High Dependence: Feature '{feature_importance.iloc[0]['feature']}' drives {top_1_score:.1f}% of the model.")
-        else:
-            st.success("✅ Model looks robust. Importance is distributed.")
-            
-    except FileNotFoundError:
-        st.warning("⚠️ Please generate data in the sidebar first!")
     except Exception as e:
-        st.error(f"An error occurred: {e}")
+        st.sidebar.error(f"Error reading CSV: {e}")
+
+# --- MAIN: AUDIT ---
+st.header("3. Audit Results")
+
+if df is not None and target_col is not None:
+    if st.button("Run Forensic Audit"):
+        try:
+            auditor = ModelAuditor(df, target_col)
+            
+            # 1. Train
+            with st.status("Training Forensic Model...", expanded=True) as status:
+                acc = auditor.train_forensic_model()
+                status.update(label=f"Forensic Model Accuracy: {acc:.4f}", state="complete")
+            
+            # 2. SHAP
+            with st.spinner("Running Game Theoretic Analysis (SHAP)..."):
+                auditor.analyze_with_shap()
+            
+            # 3. Visualization
+            st.subheader("Feature Dominance Report")
+            
+            # --- FIX: FORCE FLATTENING ---
+            # Calculate Mean Absolute SHAP
+            mean_shap = np.abs(auditor.shap_values).mean(axis=0)
+            
+            # Force it to be a 1D array (The fix for your error)
+            mean_shap = np.array(mean_shap).flatten()
+#
+            # Double check shapes match before creating DataFrame
+            if len(mean_shap) != len(auditor.X_test_sample.columns):
+                st.error(f"Shape Mismatch: Features ({len(auditor.X_test_sample.columns)}) vs SHAP ({len(mean_shap)})")
+                st.stop()
+#
+            # Create Dataframe
+            feature_importance = pd.DataFrame({
+                'feature': auditor.X_test_sample.columns,
+                'importance': mean_shap
+            }).sort_values(by='importance', ascending=False)
+            # Normalize
+            total = feature_importance['importance'].sum()
+            feature_importance['percent'] = (feature_importance['importance'] / total) * 100
+            
+            # Display Top 10
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                st.bar_chart(feature_importance.set_index('feature')['percent'].head(10))
+                
+            with col2:
+                st.write("Top Risk Factors:")
+                st.dataframe(feature_importance[['feature', 'percent']].head(5).style.format({'percent': '{:.1f}%'}))
+            
+            # 4. Final Verdict Logic
+            top_feature = feature_importance.iloc[0]
+            
+            if acc > 0.98 and top_feature['percent'] > 20:
+                 st.error(f"🚨 CRITICAL LEAKAGE DETECTED: Feature '{top_feature['feature']}' is suspicious. It explains {top_feature['percent']:.1f}% of the model alone.")
+            elif acc > 0.90 and top_feature['percent'] > 40:
+                 st.warning(f"⚠️ HIGH RISK: Feature '{top_feature['feature']}' is extremely dominant. Verify it's not a proxy for the target.")
+            else:
+                 st.success("✅ Data looks healthy. No obvious leakage detected.")
+                 
+        except Exception as e:
+            st.error(f"Audit Failed: {e}")
+else:
+    st.info("👈 Please upload a CSV file in the sidebar to begin.")
