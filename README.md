@@ -21,6 +21,13 @@ This toolkit provides a **forensic dashboard** that stresses the model using Gam
 * **Heuristic Audit Engine:** Automatically flags models with >98% accuracy driven by a small subset of features (<25% of feature space).
 * **Interactive Dashboard:** A Streamlit UI for non-technical stakeholders to visualize model trustworthiness.
 
+## 📸 How It Works
+1. **Upload Data:** Drag and drop any CSV dataset (Classification or Regression).
+2. **Select Target:** Choose the column you want to predict.
+3. **Forensic Audit:** The system trains a shadow model to detect patterns.
+4. **Leakage Detection:** - **SHAP Analysis:** Calculates the marginal contribution of every feature.
+   - **Red Flag Logic:** If a single feature drives >95% of accuracy alone, the system triggers a **CRITICAL LEAKAGE ALERT**.
+   
 ## 🚀 Quick Start
 
 ### 1. Clone the Repository
