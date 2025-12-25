@@ -48,7 +48,7 @@ class ModelAuditor:
         return X, y
 
     def train_forensic_model(self):
-        print(f"⚙️ Training Forensic {self.problem_type.capitalize()} Model...")
+        print(f"Training Forensic {self.problem_type.capitalize()} Model...")
         
         X, y = self.preprocess_data()
         
@@ -69,7 +69,7 @@ class ModelAuditor:
         return acc
 
     def analyze_with_shap(self):
-        print("🕵️ Calculating SHAP Values...")
+        print("Calculating SHAP Values...")
         
         # TreeExplainer is fast for Random Forests
         explainer = shap.TreeExplainer(self.model)

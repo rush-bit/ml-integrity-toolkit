@@ -5,7 +5,7 @@ from audit_logic import ModelAuditor
 
 st.set_page_config(page_title="ML Integrity Auditor", layout="wide")
 
-st.title("🛡️ ML Integrity & Leakage Auditor (Production Mode)")
+st.title("ML Integrity & Leakage Auditor")
 st.markdown("""
 **Upload your dataset.** This tool will train a forensic model on your data to detect if any feature is "too good to be true" (Data Leakage).
 """)
@@ -25,7 +25,7 @@ if uploaded_file is not None:
         # Select Target Column
         st.sidebar.header("2. Configuration")
         all_cols = df.columns.tolist()
-        target_col = st.sidebar.selectbox("Select Target Column (What you predict):", all_cols)
+        target_col = st.sidebar.selectbox("Select Target Column (What you are predicting):", all_cols)
         
     except Exception as e:
         st.sidebar.error(f"Error reading CSV: {e}")
@@ -87,9 +87,9 @@ if df is not None and target_col is not None:
             if acc > 0.98 and top_feature['percent'] > 20:
                  st.error(f"🚨 CRITICAL LEAKAGE DETECTED: Feature '{top_feature['feature']}' is suspicious. It explains {top_feature['percent']:.1f}% of the model alone.")
             elif acc > 0.90 and top_feature['percent'] > 40:
-                 st.warning(f"⚠️ HIGH RISK: Feature '{top_feature['feature']}' is extremely dominant. Verify it's not a proxy for the target.")
+                 st.warning(f"HIGH RISK: Feature '{top_feature['feature']}' is extremely dominant. Verify it's not a proxy for the target.")
             else:
-                 st.success("✅ Data looks healthy. No obvious leakage detected.")
+                 st.success("Data looks healthy. No obvious leakage detected.")
                  
         except Exception as e:
             st.error(f"Audit Failed: {e}")
