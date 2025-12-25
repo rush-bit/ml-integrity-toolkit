@@ -1,5 +1,7 @@
 # 🛡️ ML Integrity & Audit Toolkit
 
+![Demo Animation](assets/Untitled video - Made with Clipchamp (1).gif)(Untitled video - Made with Clipchamp.gif)
+
 > **Automated forensic auditing for tabular machine learning models.**
 > *Detects Target Leakage, Feature Dominance, and Overfitting before deployment.*
 
